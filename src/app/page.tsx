@@ -58,21 +58,24 @@ const ALERT_PHRASES: Record<LanguageType, { primary: string; sub?: string }[]> =
     { primary: "Too Noisy!" },
     { primary: "Ninja Mode Activated!" },
     { primary: "Shhhhh!" },
-    { primary: "Indoor Voices!" }
+    { primary: "Indoor Voices!" },
+    { primary: "Mrs Jimenez Said shhhhh!" }
   ],
   es: [
     { primary: "¡Silencio Por Favor!" },
     { primary: "¡Mucho Ruido!" },
     { primary: "¡Modo Ninja Activado!" },
     { primary: "¡Shhhhh!" },
-    { primary: "¡Voz De Biblioteca!" }
+    { primary: "¡Voz De Biblioteca!" },
+    { primary: "Mrs Jimenez dijo shhhhh!" }
   ],
   bi: [
     { primary: "¡Silencio Por Favor!", sub: "Quiet Please!" },
     { primary: "¡Mucho Ruido!", sub: "Too Noisy!" },
     { primary: "¡Modo Ninja Activado!", sub: "Ninja Mode On!" },
     { primary: "¡Shhhhh!", sub: "Whisper Voices!" },
-    { primary: "¡Voz De Biblioteca!", sub: "Indoor Voices!" }
+    { primary: "¡Voz De Biblioteca!", sub: "Indoor Voices!" },
+    { primary: "Mrs Jimenez dijo shhhhh!", sub: "Mrs Jimenez Said shhhhh!" }
   ]
 };
 
