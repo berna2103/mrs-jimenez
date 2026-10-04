@@ -79,7 +79,7 @@ const ALERT_PHRASES: Record<LanguageType, { primary: string; sub?: string }[]> =
   ]
 };
 
-const EMOJIS = ["😎", "🥳", "🐶", "⭐", "🚀", "🎉", "🔥", "🦄", "⚡", "✨"];
+const EMOJIS = ["🇲🇽", "🇵🇷", "🇻🇪", "🇨🇴", "🇭🇳", "🇺🇸", "🇦🇷", "🇵🇪", "🇸🇻", "🇨🇷"];
 const NEON_COLORS = ["#00F5FF", "#FF007F", "#39FF14", "#FFE600", "#BF00FF"];
 const GLASS_COLORS = [
   "rgba(56, 189, 248, 0.7)",
