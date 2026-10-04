@@ -26,7 +26,7 @@ import {
 } from "@/utils/audioAlerts";
 
 type ThemeType = "mascot" | "glass" | "neon" | "bubbles" | "emoji" | "numbers";
-type LanguageType = "en" | "es";
+type LanguageType = "en" | "es" | "bi";
 
 interface Ball {
   x: number;
@@ -51,6 +51,31 @@ interface Particle {
   color: string;
 }
 
+// Classroom Alert Phrases by Language Mode
+const ALERT_PHRASES: Record<LanguageType, { primary: string; sub?: string }[]> = {
+  en: [
+    { primary: "Quiet Please!" },
+    { primary: "Too Noisy!" },
+    { primary: "Ninja Mode Activated!" },
+    { primary: "Shhhhh!" },
+    { primary: "Indoor Voices!" }
+  ],
+  es: [
+    { primary: "¡Silencio Por Favor!" },
+    { primary: "¡Mucho Ruido!" },
+    { primary: "¡Modo Ninja Activado!" },
+    { primary: "¡Shhhhh!" },
+    { primary: "¡Voz De Biblioteca!" }
+  ],
+  bi: [
+    { primary: "¡Silencio Por Favor!", sub: "Quiet Please!" },
+    { primary: "¡Mucho Ruido!", sub: "Too Noisy!" },
+    { primary: "¡Modo Ninja Activado!", sub: "Ninja Mode On!" },
+    { primary: "¡Shhhhh!", sub: "Whisper Voices!" },
+    { primary: "¡Voz De Biblioteca!", sub: "Indoor Voices!" }
+  ]
+};
+
 const EMOJIS = ["😎", "🥳", "🐶", "⭐", "🚀", "🎉", "🔥", "🦄", "⚡", "✨"];
 const NEON_COLORS = ["#00F5FF", "#FF007F", "#39FF14", "#FFE600", "#BF00FF"];
 const GLASS_COLORS = [
@@ -63,7 +88,7 @@ const GLASS_COLORS = [
 export default function Home() {
   const [isMicOn, setIsMicOn] = useState(false);
   const [theme, setTheme] = useState<ThemeType>("mascot");
-  const [language, setLanguage] = useState<LanguageType>("es");
+  const [language, setLanguage] = useState<LanguageType>("bi");
   const [sensitivity, setSensitivity] = useState<number>(55);
   const [noiseThreshold, setNoiseThreshold] = useState<number>(75);
   const [ballCount, setBallCount] = useState<number>(30);
@@ -77,6 +102,7 @@ export default function Home() {
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
 
   const [currentVolume, setCurrentVolume] = useState<number>(0);
+  const [noiseAlert, setNoiseAlert] = useState<{ primary: string; sub?: string } | null>(null);
   const [quietStreak, setQuietStreak] = useState<number>(0);
   const [stars, setStars] = useState<number>(0);
 
@@ -90,6 +116,7 @@ export default function Home() {
   const animationFrameId = useRef<number>(0);
   const pointerPosRef = useRef<{ x: number; y: number } | null>(null);
   const lastSoundTimeRef = useRef<number>(0);
+  const alertCooldownRef = useRef<number>(0);
 
   // Load Mascot Image
   useEffect(() => {
@@ -111,7 +138,6 @@ export default function Home() {
       let radius: number;
 
       if (theme === "mascot") {
-        // Varied mascot sizes: Jumbo Alpha (66px-78px), Medium-Large (48px-58px), Standard (36px-44px)
         const sizeTier = i % 10;
         if (sizeTier === 0) {
           radius = Math.random() * 12 + 66; 
@@ -230,7 +256,6 @@ export default function Home() {
     const triggerBounceAudio = (velocity: number, ballId: number) => {
       if (!bounceSoundsEnabled) return;
       const now = performance.now();
-      // Throttle rapid clicks to 25ms to keep audio clean
       if (now - lastSoundTimeRef.current > 25 && velocity > 2.5) {
         lastSoundTimeRef.current = now;
         playBallBounceSound(soundTheme, velocity, ballId, bounceVolume / 100);
@@ -248,6 +273,18 @@ export default function Home() {
         const rawVol = (sum / freqData.length / 255) * 100;
         measuredVol = Math.min(100, Math.round(rawVol * (sensitivity / 35)));
         setCurrentVolume(measuredVol);
+
+        // Bilingual / Monolingual Noise Alert Trigger
+        if (measuredVol > noiseThreshold && Date.now() > alertCooldownRef.current) {
+          alertCooldownRef.current = Date.now() + 2400;
+          const pool = ALERT_PHRASES[language];
+          const chosen = pool[Math.floor(Math.random() * pool.length)];
+          setNoiseAlert(chosen);
+
+          setTimeout(() => {
+            setNoiseAlert(null);
+          }, 1800);
+        }
       }
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -260,7 +297,6 @@ export default function Home() {
       for (let i = 0; i < balls.length; i++) {
         const b = balls[i];
 
-        // Mass-proportional sound impulse: larger mascot balls feel heavier
         const massFactor = Math.pow(b.radius / 36, 1.4);
         if (impulse > 0) {
           const force = (Math.random() * impulse + 1) / massFactor;
@@ -280,7 +316,7 @@ export default function Home() {
         b.y += b.vy;
         b.angle += b.va;
 
-        // Wall Collisions + Sound
+        // Wall Collisions
         if (b.x - b.radius < 0) {
           const speed = Math.abs(b.vx);
           b.x = b.radius;
@@ -322,7 +358,7 @@ export default function Home() {
           }
         }
 
-        // Ball-to-Ball Elastic Collision Physics with Mass Conservation
+        // Ball Collision Physics
         for (let j = i + 1; j < balls.length; j++) {
           const b2 = balls[j];
           const dx = b2.x - b.x;
@@ -335,13 +371,11 @@ export default function Home() {
             const nx = dx / dist;
             const ny = dy / dist;
 
-            // Positional separation
             b.x -= nx * overlap * 0.5;
             b.y -= ny * overlap * 0.5;
             b2.x += nx * overlap * 0.5;
             b2.y += ny * overlap * 0.5;
 
-            // Masses based on radius squared
             const m1 = b.radius * b.radius;
             const m2 = b2.radius * b2.radius;
 
@@ -361,13 +395,12 @@ export default function Home() {
           }
         }
 
-        // Render Selected Theme
+        // Render Theme
         ctx.save();
         ctx.translate(b.x, b.y);
         ctx.rotate(b.angle);
 
         if (theme === "mascot") {
-          // Outer Gold Rimmed Mascot Ball
           ctx.beginPath();
           ctx.arc(0, 0, b.radius, 0, Math.PI * 2);
           ctx.fillStyle = "#1e293b";
@@ -452,7 +485,7 @@ export default function Home() {
         ctx.restore();
       }
 
-      // Render Popping Particles
+      // Particles
       for (let pIdx = particlesRef.current.length - 1; pIdx >= 0; pIdx--) {
         const p = particlesRef.current[pIdx];
         p.x += p.vx;
@@ -480,9 +513,9 @@ export default function Home() {
       cancelAnimationFrame(animationFrameId.current);
       window.removeEventListener("resize", resize);
     };
-  }, [isMicOn, sensitivity, noiseThreshold, theme, bounceSoundsEnabled, soundTheme, bounceVolume]);
+  }, [isMicOn, sensitivity, noiseThreshold, theme, bounceSoundsEnabled, soundTheme, bounceVolume, language]);
 
-  // Touch / Click Handler
+  // Touch & Pointer Interaction
   const handleCanvasInteraction = (clientX: number, clientY: number) => {
     pointerPosRef.current = { x: clientX, y: clientY };
     setTimeout(() => {
@@ -539,6 +572,22 @@ export default function Home() {
         className="absolute inset-0 z-0 cursor-pointer"
       />
 
+      {/* Bilingual / Monolingual Noise Alert Banner */}
+      {noiseAlert && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-30 transition-all duration-300">
+          <div className="flex flex-col items-center gap-2 px-8 md:px-12 py-6 rounded-3xl bg-red-600/90 backdrop-blur-md shadow-2xl border-4 border-white/80 animate-bounce">
+            <h1 className="text-3xl md:text-6xl font-black tracking-wide text-white uppercase text-center drop-shadow-[0_4px_16px_rgba(0,0,0,0.8)]">
+              {noiseAlert.primary}
+            </h1>
+            {noiseAlert.sub && (
+              <h2 className="text-xl md:text-3xl font-extrabold tracking-wider text-amber-300 uppercase text-center drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">
+                {noiseAlert.sub}
+              </h2>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Header HUD */}
       <header className="absolute top-4 left-4 right-4 z-20 flex items-center justify-between">
         <div className="flex items-center gap-3 bg-slate-900/70 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-white/10 shadow-lg">
@@ -581,7 +630,7 @@ export default function Home() {
           <div className="flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-amber-400" />
             <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">
-              {language === "es" ? "Racha Silenciosa" : "Quiet Streak"}
+              {language === "es" ? "Racha Silenciosa" : language === "bi" ? "Racha / Streak" : "Quiet Streak"}
             </span>
             <span className="px-2 py-0.5 bg-slate-800 text-amber-400 font-mono font-bold rounded-lg text-sm border border-amber-400/20">
               {quietStreak}s
@@ -624,7 +673,7 @@ export default function Home() {
           >
             <Settings2 className="w-5 h-5 text-cyan-400" />
             <span className="hidden md:inline font-semibold text-sm">
-              {language === "es" ? "Ajustes" : "Settings"}
+              {language === "es" ? "Ajustes" : language === "bi" ? "Ajustes / Settings" : "Settings"}
             </span>
           </button>
         </div>
@@ -636,7 +685,7 @@ export default function Home() {
           <div className="flex items-center justify-between pb-4 border-b border-white/10 mb-5">
             <h2 className="font-bold text-lg text-white flex items-center gap-2">
               <Sliders className="w-5 h-5 text-cyan-400" />
-              {language === "es" ? "Configuración" : "Settings"}
+              {language === "es" ? "Configuración" : language === "bi" ? "Ajustes / Settings" : "Settings"}
             </h2>
             <button
               onClick={() => setIsSettingsOpen(false)}
@@ -647,11 +696,38 @@ export default function Home() {
           </div>
 
           <div className="space-y-6">
+            {/* Language Selection: English, Spanish, Bilingual */}
+            <div>
+              <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-2 mb-2">
+                <Globe className="w-4 h-4 text-cyan-400" />
+                {language === "es" ? "Idioma de Mensajes" : language === "bi" ? "Idioma / Language Mode" : "Message Language"}
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { id: "bi", label: "🌐 Bilingüe" },
+                  { id: "es", label: "Español" },
+                  { id: "en", label: "English" }
+                ].map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => setLanguage(item.id as LanguageType)}
+                    className={`py-2 px-2 rounded-xl font-medium text-xs transition-all text-center ${
+                      language === item.id
+                        ? "bg-cyan-500 text-white font-bold shadow-lg shadow-cyan-500/25"
+                        : "bg-slate-800 hover:bg-slate-700/80 text-slate-300"
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Ball Bounce Sound Theme Selection */}
             <div>
               <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-2 mb-2">
                 <Music className="w-4 h-4 text-cyan-400" />
-                {language === "es" ? "Sonidos de Rebote de Pelotas" : "Ball Bounce Sounds"}
+                {language === "es" ? "Sonidos de Rebote" : language === "bi" ? "Sonidos / Bounce Sounds" : "Ball Bounce Sounds"}
               </label>
               <div className="grid grid-cols-3 gap-2">
                 {[
@@ -684,7 +760,7 @@ export default function Home() {
             <div>
               <div className="flex justify-between items-center mb-1">
                 <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                  {language === "es" ? "Volumen del Rebote" : "Bounce Sound Volume"}
+                  {language === "es" ? "Volumen del Rebote" : language === "bi" ? "Volumen / Bounce Volume" : "Bounce Volume"}
                 </label>
                 <span className="font-mono text-cyan-400 text-xs font-bold">{bounceVolume}%</span>
               </div>
@@ -698,37 +774,11 @@ export default function Home() {
               />
             </div>
 
-            {/* Language Selection */}
-            <div>
-              <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-2 mb-2">
-                <Globe className="w-4 h-4 text-cyan-400" />
-                {language === "es" ? "Idioma" : "Language"}
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  { id: "es", label: "Español" },
-                  { id: "en", label: "English" }
-                ].map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={() => setLanguage(item.id as LanguageType)}
-                    className={`py-2 px-3 rounded-xl font-medium text-xs transition-all ${
-                      language === item.id
-                        ? "bg-cyan-500 text-white font-bold shadow-lg shadow-cyan-500/25"
-                        : "bg-slate-800 hover:bg-slate-700/80 text-slate-300"
-                    }`}
-                  >
-                    {item.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
             {/* Mascot & Ball Themes */}
             <div>
               <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-2 mb-2">
                 <Sparkles className="w-4 h-4 text-cyan-400" />
-                {language === "es" ? "Temas & Mascota" : "Themes & Mascot"}
+                {language === "es" ? "Temas & Mascota" : language === "bi" ? "Temas / Themes" : "Themes & Mascot"}
               </label>
               <div className="grid grid-cols-3 gap-2">
                 {[
@@ -737,7 +787,7 @@ export default function Home() {
                   { id: "neon", label: "Neon" },
                   { id: "bubbles", label: "Bubbles" },
                   { id: "emoji", label: "Emoji" },
-                  { id: "number", label: "Number" }
+                  { id: "numbers", label: "Numbers" }
                 ].map((item) => (
                   <button
                     key={item.id}
@@ -758,7 +808,7 @@ export default function Home() {
             <div>
               <div className="flex justify-between items-center mb-1">
                 <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                  {language === "es" ? "Sensibilidad del Micrófono" : "Mic Sensitivity"}
+                  {language === "es" ? "Sensibilidad del Micrófono" : language === "bi" ? "Sensibilidad / Mic Sensitivity" : "Mic Sensitivity"}
                 </label>
                 <span className="font-mono text-cyan-400 text-xs font-bold">{sensitivity}%</span>
               </div>
@@ -776,7 +826,7 @@ export default function Home() {
             <div>
               <div className="flex justify-between items-center mb-1">
                 <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                  {language === "es" ? "Límite de Ruido (Visual)" : "Noise Threshold Limit"}
+                  {language === "es" ? "Límite de Ruido Máximo" : language === "bi" ? "Límite / Noise Threshold" : "Noise Threshold Limit"}
                 </label>
                 <span className="font-mono text-red-400 text-xs font-bold">{noiseThreshold}%</span>
               </div>
@@ -794,7 +844,7 @@ export default function Home() {
             <div>
               <div className="flex justify-between items-center mb-1">
                 <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                  {language === "es" ? "Cantidad de Pelotas" : "Total Balls"}
+                  {language === "es" ? "Cantidad de Pelotas" : language === "bi" ? "Pelotas / Ball Count" : "Total Balls"}
                 </label>
                 <span className="font-mono text-amber-400 text-xs font-bold">{ballCount}</span>
               </div>
@@ -816,7 +866,7 @@ export default function Home() {
               className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition"
             >
               <RotateCcw className="w-3.5 h-3.5 text-slate-400" />
-              {language === "es" ? "Reiniciar Contador de Estrellas" : "Reset Streak & Stars"}
+              {language === "es" ? "Reiniciar Contador de Estrellas" : language === "bi" ? "Reiniciar / Reset Stars" : "Reset Streak & Stars"}
             </button>
           </div>
         </aside>
@@ -827,19 +877,29 @@ export default function Home() {
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
           <div className="bg-slate-900/85 backdrop-blur-md p-6 md:p-8 rounded-3xl border border-white/10 max-w-sm text-center shadow-2xl pointer-events-auto">
             <h2 className="text-xl md:text-2xl font-bold text-white mb-2">
-              {language === "es" ? "Control de Ruido Escolar" : "Classroom Noise Monitor"}
+              {language === "es" 
+                ? "Control de Ruido Escolar" 
+                : language === "bi" 
+                ? "Control de Ruido / Noise Monitor" 
+                : "Classroom Noise Monitor"}
             </h2>
             <p className="text-sm text-slate-300 mb-6">
               {language === "es" 
-                ? "Haz clic para activar el micrófono. ¡Las pelotas y la mascota rebotan y hacen sonidos al chocar!"
-                : "Click below to turn on the microphone. The balls and mascot bounce and make sounds on impact!"}
+                ? "Haz clic para activar el micrófono. ¡Las pelotas y tu mascota rebotan y avisan cuando haya mucho ruido!"
+                : language === "bi"
+                ? "Activa el micrófono. ¡Las pelotas rebotan y alertan en español e inglés cuando hay ruido!\nEnable the mic to monitor sound."
+                : "Click below to turn on the microphone. The balls and mascot bounce when students make sound!"}
             </p>
             <button
               onClick={toggleMic}
               className="w-full py-3.5 px-6 rounded-2xl bg-cyan-500 hover:bg-cyan-400 text-white font-bold text-base shadow-xl shadow-cyan-500/25 transition-all flex items-center justify-center gap-2"
             >
               <Mic className="w-5 h-5" />
-              {language === "es" ? "Iniciar Micrófono" : "Enable Microphone"}
+              {language === "es" 
+                ? "Iniciar Micrófono" 
+                : language === "bi" 
+                ? "Iniciar Micrófono / Start Mic" 
+                : "Enable Microphone"}
             </button>
           </div>
         </div>
