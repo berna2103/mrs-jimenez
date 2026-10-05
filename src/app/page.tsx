@@ -96,10 +96,9 @@ export default function Home() {
   // ==========================================
   // STRIPE CONFIGURATION & IPAD CAMPAIGN
   // ==========================================
-  // Paste your live Stripe Payment Link below (e.g., https://buy.stripe.com/xxx)
-  const STRIPE_PAYMENT_LINK = "https://buy.stripe.com/8x2bJ06633pycK1891bII00"; 
+  const STRIPE_PAYMENT_LINK = "https://buy.stripe.com/8x2bJ06633pycK1891bII00"; // Replace with your real Stripe link
   const totalIpadsNeeded = 15;
-  const [ipadsFunded] = useState<number>(0); // Increase this number as donations come in
+  const [ipadsFunded] = useState<number>(1); // Update as donations come in
   // ==========================================
 
   const [isMicOn, setIsMicOn] = useState(false);
@@ -568,29 +567,32 @@ export default function Home() {
         </div>
       )}
 
-      {/* Top Header */}
-      <header className="absolute top-4 left-4 right-4 z-20 flex items-center justify-between">
-        <div className="flex items-center gap-3 bg-slate-900/70 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-white/10 shadow-lg">
+      {/* ============================================================== */}
+      {/* TOP HEADER: PERMANENTLY VISIBLE DONATION BUTTON ALWAYS ON TOP   */}
+      {/* ============================================================== */}
+      <header className="absolute top-3 left-3 right-3 sm:top-4 sm:left-4 sm:right-4 z-20 flex items-center justify-between gap-2">
+        {/* Left: Microphone & Volume Level */}
+        <div className="flex items-center gap-2 sm:gap-3 bg-slate-900/80 backdrop-blur-md px-3 sm:px-4 py-2 sm:py-2.5 rounded-2xl border border-white/10 shadow-lg">
           <button
             onClick={toggleMic}
-            className={`p-3 rounded-xl transition-all duration-300 flex items-center justify-center ${
+            className={`p-2.5 sm:p-3 rounded-xl transition-all duration-300 flex items-center justify-center ${
               isMicOn 
                 ? "bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/30" 
                 : "bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/30"
             }`}
           >
-            {isMicOn ? <Mic className="w-5 h-5 animate-pulse" /> : <MicOff className="w-5 h-5" />}
+            {isMicOn ? <Mic className="w-4 h-4 sm:w-5 sm:h-5 animate-pulse" /> : <MicOff className="w-4 h-4 sm:w-5 sm:h-5" />}
           </button>
 
-          <div className="flex flex-col gap-1 w-28 sm:w-36 md:w-48">
-            <div className="flex justify-between text-xs font-semibold text-slate-300">
+          <div className="flex flex-col gap-1 w-20 sm:w-32 md:w-44">
+            <div className="flex justify-between text-[11px] sm:text-xs font-semibold text-slate-300">
               <span className="flex items-center gap-1">
-                <Volume2 className="w-3.5 h-3.5 text-cyan-400" />
+                <Volume2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-cyan-400" />
                 {isMicOn ? `${currentVolume}%` : "OFF"}
               </span>
-              <span className="text-slate-400">Limit: {noiseThreshold}%</span>
+              <span className="text-slate-400 hidden sm:inline">Limit: {noiseThreshold}%</span>
             </div>
-            <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden border border-white/5">
+            <div className="h-1.5 sm:h-2 w-full bg-slate-800 rounded-full overflow-hidden border border-white/5">
               <div
                 className={`h-full transition-all duration-100 ${
                   currentVolume > noiseThreshold
@@ -605,8 +607,8 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Quiet Streak */}
-        <div className="hidden lg:flex items-center gap-4 bg-slate-900/70 backdrop-blur-md px-5 py-2.5 rounded-2xl border border-white/10 shadow-lg">
+        {/* Center: Quiet Streak Gamification */}
+        <div className="hidden lg:flex items-center gap-4 bg-slate-900/80 backdrop-blur-md px-5 py-2.5 rounded-2xl border border-white/10 shadow-lg">
           <div className="flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-amber-400" />
             <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">
@@ -625,50 +627,58 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Action Controls */}
-        <div className="flex items-center gap-2">
-          {/* iPads Classroom Fund Button */}
+        {/* Right: PERMANENT IPAD DONATION BUTTON + Quick Utility Toggles */}
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          {/* ALWAYS VISIBLE IPAD DONATION BUTTON */}
           <button
             onClick={() => setIsDonationModalOpen(true)}
-            className="flex items-center gap-2 px-3.5 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 text-white font-bold text-xs sm:text-sm shadow-lg shadow-emerald-500/25 hover:brightness-110 active:scale-95 transition-all border border-white/20 animate-pulse"
+            className="flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 text-white font-bold text-xs sm:text-sm shadow-xl shadow-emerald-500/30 hover:brightness-110 active:scale-95 transition-all border border-emerald-300/40"
           >
-            <Heart className="w-4 h-4 fill-white" />
-            <span>{language === "es" ? "Apoya los iPads (Stripe)" : "Class iPad Fund"}</span>
+            <Heart className="w-4 h-4 fill-white text-white animate-pulse" />
+            <span className="hidden sm:inline">
+              {language === "es" ? "Apoya 15 iPads" : language === "bi" ? "iPads Fund 🍎" : "15 iPads Project"}
+            </span>
+            <span className="sm:hidden font-extrabold">iPads</span>
+            {/* Live Progress Pill */}
+            <span className="bg-black/30 backdrop-blur-sm text-[11px] font-mono px-2 py-0.5 rounded-full border border-white/20">
+              {ipadsFunded}/{totalIpadsNeeded}
+            </span>
           </button>
 
           {/* Share App Link */}
           <button
             onClick={handleShareApp}
-            className="p-3 bg-slate-900/70 backdrop-blur-md hover:bg-slate-800/80 rounded-2xl border border-white/10 text-slate-300 hover:text-white transition-all shadow-lg hidden sm:flex items-center justify-center"
+            className="p-2 sm:p-3 bg-slate-900/80 backdrop-blur-md hover:bg-slate-800/80 rounded-2xl border border-white/10 text-slate-300 hover:text-white transition-all shadow-lg hidden md:flex items-center justify-center"
             title="Share this tool with other teachers"
           >
-            {copiedLink ? <CheckCircle2 className="w-5 h-5 text-emerald-400" /> : <Share2 className="w-5 h-5 text-cyan-400" />}
+            {copiedLink ? <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400" /> : <Share2 className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-400" />}
           </button>
 
           {/* Sound Toggle */}
           <button
             onClick={() => setBounceSoundsEnabled(!bounceSoundsEnabled)}
-            className={`p-3 rounded-2xl border border-white/10 backdrop-blur-md transition-all shadow-lg ${
-              bounceSoundsEnabled ? "bg-slate-900/70 text-cyan-400 hover:text-cyan-300" : "bg-slate-900/50 text-slate-500 hover:text-slate-400"
+            className={`p-2 sm:p-3 rounded-2xl border border-white/10 backdrop-blur-md transition-all shadow-lg ${
+              bounceSoundsEnabled ? "bg-slate-900/80 text-cyan-400 hover:text-cyan-300" : "bg-slate-900/60 text-slate-500 hover:text-slate-400"
             }`}
+            title={bounceSoundsEnabled ? "Mute Ball Sounds" : "Unmute Ball Sounds"}
           >
-            {bounceSoundsEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+            {bounceSoundsEnabled ? <Volume2 className="w-4 h-4 sm:w-5 sm:h-5" /> : <VolumeX className="w-4 h-4 sm:w-5 sm:h-5" />}
           </button>
 
-          {/* Fullscreen */}
+          {/* Fullscreen Toggle */}
           <button
             onClick={toggleFullscreen}
-            className="p-3 bg-slate-900/70 backdrop-blur-md hover:bg-slate-800/80 rounded-2xl border border-white/10 text-slate-300 hover:text-white transition-all shadow-lg"
+            className="p-2 sm:p-3 bg-slate-900/80 backdrop-blur-md hover:bg-slate-800/80 rounded-2xl border border-white/10 text-slate-300 hover:text-white transition-all shadow-lg hidden sm:flex items-center justify-center"
           >
-            {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
+            {isFullscreen ? <Minimize className="w-4 h-4 sm:w-5 sm:h-5" /> : <Maximize className="w-4 h-4 sm:w-5 sm:h-5" />}
           </button>
 
-          {/* Settings */}
+          {/* Settings Drawer Toggle */}
           <button
             onClick={() => setIsSettingsOpen(!isSettingsOpen)}
-            className="p-3 bg-slate-900/70 backdrop-blur-md hover:bg-slate-800/80 rounded-2xl border border-white/10 text-slate-300 hover:text-white transition-all shadow-lg flex items-center gap-2"
+            className="p-2 sm:p-3 bg-slate-900/80 backdrop-blur-md hover:bg-slate-800/80 rounded-2xl border border-white/10 text-slate-300 hover:text-white transition-all shadow-lg flex items-center gap-1.5"
           >
-            <Settings2 className="w-5 h-5 text-cyan-400" />
+            <Settings2 className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-400" />
           </button>
         </div>
       </header>
@@ -711,7 +721,7 @@ export default function Home() {
                 />
               </div>
               <p className="text-[11px] text-slate-400 text-right">
-                {totalIpadsNeeded - ipadsFunded} iPads remaining to complete our classroom set!
+                {totalIpadsNeeded - ipadsFunded} iPads remaining to complete our full student set!
               </p>
             </div>
 
