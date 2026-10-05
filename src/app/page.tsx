@@ -8,15 +8,23 @@ import {
   MicOff, 
   Settings2, 
   Volume2, 
-  VolumeX,
+  VolumeX, 
   Maximize, 
   Minimize, 
   Globe, 
   Sparkles, 
   Award, 
-  RotateCcw,
-  Sliders,
-  Music
+  RotateCcw, 
+  Sliders, 
+  Music, 
+  Heart, 
+  Tablet, 
+  Share2, 
+  ExternalLink, 
+  X, 
+  CheckCircle2,
+  CreditCard,
+  ShieldCheck
 } from "lucide-react";
 import { 
   playBallBounceSound, 
@@ -51,35 +59,31 @@ interface Particle {
   color: string;
 }
 
-// Classroom Alert Phrases by Language Mode
 const ALERT_PHRASES: Record<LanguageType, { primary: string; sub?: string }[]> = {
   en: [
     { primary: "Quiet Please!" },
     { primary: "Too Noisy!" },
     { primary: "Ninja Mode Activated!" },
     { primary: "Shhhhh!" },
-    { primary: "Indoor Voices!" },
-    { primary: "Mrs Jimenez Said shhhhh!" }
+    { primary: "Indoor Voices!" }
   ],
   es: [
     { primary: "¡Silencio Por Favor!" },
     { primary: "¡Mucho Ruido!" },
     { primary: "¡Modo Ninja Activado!" },
     { primary: "¡Shhhhh!" },
-    { primary: "¡Voz De Biblioteca!" },
-    { primary: "Mrs Jimenez dijo shhhhh!" }
+    { primary: "¡Voz De Biblioteca!" }
   ],
   bi: [
     { primary: "¡Silencio Por Favor!", sub: "Quiet Please!" },
     { primary: "¡Mucho Ruido!", sub: "Too Noisy!" },
     { primary: "¡Modo Ninja Activado!", sub: "Ninja Mode On!" },
     { primary: "¡Shhhhh!", sub: "Whisper Voices!" },
-    { primary: "¡Voz De Biblioteca!", sub: "Indoor Voices!" },
-    { primary: "Mrs Jimenez dijo shhhhh!", sub: "Mrs Jimenez Said shhhhh!" }
+    { primary: "¡Voz De Biblioteca!", sub: "Indoor Voices!" }
   ]
 };
 
-const EMOJIS = ["🇲🇽", "🇵🇷", "🇻🇪", "🇨🇴", "🇭🇳", "🇺🇸", "🇦🇷", "🇵🇪", "🇸🇻", "🇨🇷"];
+const EMOJIS = ["😎", "🥳", "🐶", "⭐", "🚀", "🎉", "🔥", "🦄", "⚡", "✨"];
 const NEON_COLORS = ["#00F5FF", "#FF007F", "#39FF14", "#FFE600", "#BF00FF"];
 const GLASS_COLORS = [
   "rgba(56, 189, 248, 0.7)",
@@ -89,20 +93,31 @@ const GLASS_COLORS = [
 ];
 
 export default function Home() {
+  // ==========================================
+  // STRIPE CONFIGURATION & IPAD CAMPAIGN
+  // ==========================================
+  // Paste your live Stripe Payment Link below (e.g., https://buy.stripe.com/xxx)
+  const STRIPE_PAYMENT_LINK = "https://buy.stripe.com/8x2bJ06633pycK1891bII00"; 
+  const totalIpadsNeeded = 15;
+  const [ipadsFunded] = useState<number>(0); // Increase this number as donations come in
+  // ==========================================
+
   const [isMicOn, setIsMicOn] = useState(false);
   const [theme, setTheme] = useState<ThemeType>("mascot");
   const [language, setLanguage] = useState<LanguageType>("bi");
   const [sensitivity, setSensitivity] = useState<number>(55);
   const [noiseThreshold, setNoiseThreshold] = useState<number>(75);
   const [ballCount, setBallCount] = useState<number>(30);
-  
-  // Ball Sound Settings
+
+  // Bounce Sounds
   const [bounceSoundsEnabled, setBounceSoundsEnabled] = useState<boolean>(true);
   const [soundTheme, setSoundTheme] = useState<BallSoundTheme>("thud");
   const [bounceVolume, setBounceVolume] = useState<number>(45);
 
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
+  const [isDonationModalOpen, setIsDonationModalOpen] = useState<boolean>(false);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+  const [copiedLink, setCopiedLink] = useState<boolean>(false);
 
   const [currentVolume, setCurrentVolume] = useState<number>(0);
   const [noiseAlert, setNoiseAlert] = useState<{ primary: string; sub?: string } | null>(null);
@@ -121,7 +136,6 @@ export default function Home() {
   const lastSoundTimeRef = useRef<number>(0);
   const alertCooldownRef = useRef<number>(0);
 
-  // Load Mascot Image
   useEffect(() => {
     const img = new Image();
     img.src = "/mascot.png";
@@ -130,7 +144,6 @@ export default function Home() {
     };
   }, []);
 
-  // Initialize Ball Array with Dynamic Sizes & Varied Mascot Dimensions
   useEffect(() => {
     const canvas = canvasRef.current;
     const w = canvas ? canvas.width : window.innerWidth;
@@ -139,16 +152,11 @@ export default function Home() {
     const balls: Ball[] = [];
     for (let i = 0; i < ballCount; i++) {
       let radius: number;
-
       if (theme === "mascot") {
         const sizeTier = i % 10;
-        if (sizeTier === 0) {
-          radius = Math.random() * 12 + 66; 
-        } else if (sizeTier < 4) {
-          radius = Math.random() * 10 + 48; 
-        } else {
-          radius = Math.random() * 8 + 36;  
-        }
+        if (sizeTier === 0) radius = Math.random() * 12 + 66; 
+        else if (sizeTier < 4) radius = Math.random() * 10 + 48; 
+        else radius = Math.random() * 8 + 36;  
       } else if (theme === "bubbles") {
         radius = Math.random() * 28 + 24;
       } else {
@@ -186,14 +194,18 @@ export default function Home() {
     }
   };
 
+  const handleShareApp = () => {
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(window.location.href);
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2000);
+    }
+  };
+
   const toggleMic = async () => {
     if (isMicOn) {
-      if (mediaStreamRef.current) {
-        mediaStreamRef.current.getTracks().forEach((track) => track.stop());
-      }
-      if (audioContextRef.current) {
-        audioContextRef.current.close();
-      }
+      if (mediaStreamRef.current) mediaStreamRef.current.getTracks().forEach((t) => t.stop());
+      if (audioContextRef.current) audioContextRef.current.close();
       setIsMicOn(false);
       setCurrentVolume(0);
     } else {
@@ -204,7 +216,6 @@ export default function Home() {
         const analyser = ctx.createAnalyser();
         analyser.fftSize = 256;
         analyser.smoothingTimeConstant = 0.6;
-
         const source = ctx.createMediaStreamSource(stream);
         source.connect(analyser);
 
@@ -218,7 +229,6 @@ export default function Home() {
     }
   };
 
-  // Quiet Streak Tracker
   useEffect(() => {
     const interval = setInterval(() => {
       if (isMicOn) {
@@ -240,7 +250,6 @@ export default function Home() {
     return () => clearInterval(interval);
   }, [isMicOn, currentVolume, noiseThreshold]);
 
-  // Main Canvas & Physics Loop
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -270,23 +279,16 @@ export default function Home() {
       if (analyserRef.current && isMicOn) {
         analyserRef.current.getByteFrequencyData(freqData);
         let sum = 0;
-        for (let i = 0; i < freqData.length; i++) {
-          sum += freqData[i];
-        }
+        for (let i = 0; i < freqData.length; i++) sum += freqData[i];
         const rawVol = (sum / freqData.length / 255) * 100;
         measuredVol = Math.min(100, Math.round(rawVol * (sensitivity / 35)));
         setCurrentVolume(measuredVol);
 
-        // Bilingual / Monolingual Noise Alert Trigger
         if (measuredVol > noiseThreshold && Date.now() > alertCooldownRef.current) {
           alertCooldownRef.current = Date.now() + 2400;
           const pool = ALERT_PHRASES[language];
-          const chosen = pool[Math.floor(Math.random() * pool.length)];
-          setNoiseAlert(chosen);
-
-          setTimeout(() => {
-            setNoiseAlert(null);
-          }, 1800);
+          setNoiseAlert(pool[Math.floor(Math.random() * pool.length)]);
+          setTimeout(() => setNoiseAlert(null), 1800);
         }
       }
 
@@ -299,56 +301,42 @@ export default function Home() {
 
       for (let i = 0; i < balls.length; i++) {
         const b = balls[i];
-
         const massFactor = Math.pow(b.radius / 36, 1.4);
+
         if (impulse > 0) {
           const force = (Math.random() * impulse + 1) / massFactor;
-          if (theme === "bubbles") {
-            b.vy += force * 0.3;
-          } else {
-            b.vy -= force * 0.85;
-          }
+          b.vy += theme === "bubbles" ? force * 0.3 : -force * 0.85;
           b.vx += ((Math.random() - 0.5) * impulse * 0.8) / massFactor;
         }
 
         b.vy += gravity;
         b.vx *= friction;
         b.vy *= friction;
-
         b.x += b.vx;
         b.y += b.vy;
         b.angle += b.va;
 
-        // Wall Collisions
         if (b.x - b.radius < 0) {
-          const speed = Math.abs(b.vx);
           b.x = b.radius;
           b.vx = -b.vx * 0.75;
-          triggerBounceAudio(speed, b.id);
+          triggerBounceAudio(Math.abs(b.vx), b.id);
         } else if (b.x + b.radius > canvas.width) {
-          const speed = Math.abs(b.vx);
           b.x = canvas.width - b.radius;
           b.vx = -b.vx * 0.75;
-          triggerBounceAudio(speed, b.id);
+          triggerBounceAudio(Math.abs(b.vx), b.id);
         }
 
         if (b.y - b.radius < 0) {
-          const speed = Math.abs(b.vy);
           b.y = b.radius;
           b.vy = -b.vy * 0.75;
-          if (theme === "bubbles") {
-            b.y = canvas.height + b.radius;
-          } else {
-            triggerBounceAudio(speed, b.id);
-          }
+          if (theme === "bubbles") b.y = canvas.height + b.radius;
+          else triggerBounceAudio(Math.abs(b.vy), b.id);
         } else if (b.y + b.radius > canvas.height) {
-          const speed = Math.abs(b.vy);
           b.y = canvas.height - b.radius;
           b.vy = -b.vy * 0.75;
-          triggerBounceAudio(speed, b.id);
+          triggerBounceAudio(Math.abs(b.vy), b.id);
         }
 
-        // Pointer Interaction
         if (pointerPosRef.current) {
           const dx = b.x - pointerPosRef.current.x;
           const dy = b.y - pointerPosRef.current.y;
@@ -361,7 +349,6 @@ export default function Home() {
           }
         }
 
-        // Ball Collision Physics
         for (let j = i + 1; j < balls.length; j++) {
           const b2 = balls[j];
           const dx = b2.x - b.x;
@@ -381,7 +368,6 @@ export default function Home() {
 
             const m1 = b.radius * b.radius;
             const m2 = b2.radius * b2.radius;
-
             const kx = b.vx - b2.vx;
             const ky = b.vy - b2.vy;
             const p = (2 * (nx * kx + ny * ky)) / (m1 + m2);
@@ -392,13 +378,10 @@ export default function Home() {
             b2.vy += p * m1 * ny * 0.78;
 
             const impactSpeed = Math.abs(p * (m1 + m2) * 0.5);
-            if (impactSpeed > 3.5) {
-              triggerBounceAudio(impactSpeed, b.id);
-            }
+            if (impactSpeed > 3.5) triggerBounceAudio(impactSpeed, b.id);
           }
         }
 
-        // Render Theme
         ctx.save();
         ctx.translate(b.x, b.y);
         ctx.rotate(b.angle);
@@ -488,7 +471,6 @@ export default function Home() {
         ctx.restore();
       }
 
-      // Particles
       for (let pIdx = particlesRef.current.length - 1; pIdx >= 0; pIdx--) {
         const p = particlesRef.current[pIdx];
         p.x += p.vx;
@@ -511,14 +493,12 @@ export default function Home() {
     };
 
     render();
-
     return () => {
       cancelAnimationFrame(animationFrameId.current);
       window.removeEventListener("resize", resize);
     };
   }, [isMicOn, sensitivity, noiseThreshold, theme, bounceSoundsEnabled, soundTheme, bounceVolume, language]);
 
-  // Touch & Pointer Interaction
   const handleCanvasInteraction = (clientX: number, clientY: number) => {
     pointerPosRef.current = { x: clientX, y: clientY };
     setTimeout(() => {
@@ -529,8 +509,7 @@ export default function Home() {
       const balls = ballsRef.current;
       for (let i = balls.length - 1; i >= 0; i--) {
         const b = balls[i];
-        const dist = Math.hypot(b.x - clientX, b.y - clientY);
-        if (dist <= b.radius) {
+        if (Math.hypot(b.x - clientX, b.y - clientY) <= b.radius) {
           playBubblePop(0.5);
           for (let k = 0; k < 10; k++) {
             particlesRef.current.push({
@@ -568,14 +547,12 @@ export default function Home() {
         ref={canvasRef}
         onMouseDown={(e) => handleCanvasInteraction(e.clientX, e.clientY)}
         onTouchStart={(e) => {
-          if (e.touches[0]) {
-            handleCanvasInteraction(e.touches[0].clientX, e.touches[0].clientY);
-          }
+          if (e.touches[0]) handleCanvasInteraction(e.touches[0].clientX, e.touches[0].clientY);
         }}
         className="absolute inset-0 z-0 cursor-pointer"
       />
 
-      {/* Bilingual / Monolingual Noise Alert Banner */}
+      {/* Alert Overlay */}
       {noiseAlert && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-30 transition-all duration-300">
           <div className="flex flex-col items-center gap-2 px-8 md:px-12 py-6 rounded-3xl bg-red-600/90 backdrop-blur-md shadow-2xl border-4 border-white/80 animate-bounce">
@@ -591,7 +568,7 @@ export default function Home() {
         </div>
       )}
 
-      {/* Header HUD */}
+      {/* Top Header */}
       <header className="absolute top-4 left-4 right-4 z-20 flex items-center justify-between">
         <div className="flex items-center gap-3 bg-slate-900/70 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-white/10 shadow-lg">
           <button
@@ -605,7 +582,7 @@ export default function Home() {
             {isMicOn ? <Mic className="w-5 h-5 animate-pulse" /> : <MicOff className="w-5 h-5" />}
           </button>
 
-          <div className="flex flex-col gap-1 w-32 md:w-48">
+          <div className="flex flex-col gap-1 w-28 sm:w-36 md:w-48">
             <div className="flex justify-between text-xs font-semibold text-slate-300">
               <span className="flex items-center gap-1">
                 <Volume2 className="w-3.5 h-3.5 text-cyan-400" />
@@ -628,8 +605,8 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Quiet Streak Gamification */}
-        <div className="hidden sm:flex items-center gap-4 bg-slate-900/70 backdrop-blur-md px-5 py-2.5 rounded-2xl border border-white/10 shadow-lg">
+        {/* Quiet Streak */}
+        <div className="hidden lg:flex items-center gap-4 bg-slate-900/70 backdrop-blur-md px-5 py-2.5 rounded-2xl border border-white/10 shadow-lg">
           <div className="flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-amber-400" />
             <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">
@@ -648,21 +625,37 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Top Control Buttons */}
+        {/* Action Controls */}
         <div className="flex items-center gap-2">
-          {/* Quick Toggle Ball Bounce Sounds */}
+          {/* iPads Classroom Fund Button */}
+          <button
+            onClick={() => setIsDonationModalOpen(true)}
+            className="flex items-center gap-2 px-3.5 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 text-white font-bold text-xs sm:text-sm shadow-lg shadow-emerald-500/25 hover:brightness-110 active:scale-95 transition-all border border-white/20 animate-pulse"
+          >
+            <Heart className="w-4 h-4 fill-white" />
+            <span>{language === "es" ? "Apoya los iPads (Stripe)" : "Class iPad Fund"}</span>
+          </button>
+
+          {/* Share App Link */}
+          <button
+            onClick={handleShareApp}
+            className="p-3 bg-slate-900/70 backdrop-blur-md hover:bg-slate-800/80 rounded-2xl border border-white/10 text-slate-300 hover:text-white transition-all shadow-lg hidden sm:flex items-center justify-center"
+            title="Share this tool with other teachers"
+          >
+            {copiedLink ? <CheckCircle2 className="w-5 h-5 text-emerald-400" /> : <Share2 className="w-5 h-5 text-cyan-400" />}
+          </button>
+
+          {/* Sound Toggle */}
           <button
             onClick={() => setBounceSoundsEnabled(!bounceSoundsEnabled)}
             className={`p-3 rounded-2xl border border-white/10 backdrop-blur-md transition-all shadow-lg ${
-              bounceSoundsEnabled
-                ? "bg-slate-900/70 text-cyan-400 hover:text-cyan-300"
-                : "bg-slate-900/50 text-slate-500 hover:text-slate-400"
+              bounceSoundsEnabled ? "bg-slate-900/70 text-cyan-400 hover:text-cyan-300" : "bg-slate-900/50 text-slate-500 hover:text-slate-400"
             }`}
-            title={bounceSoundsEnabled ? "Mute Ball Sounds" : "Unmute Ball Sounds"}
           >
             {bounceSoundsEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
           </button>
 
+          {/* Fullscreen */}
           <button
             onClick={toggleFullscreen}
             className="p-3 bg-slate-900/70 backdrop-blur-md hover:bg-slate-800/80 rounded-2xl border border-white/10 text-slate-300 hover:text-white transition-all shadow-lg"
@@ -670,17 +663,97 @@ export default function Home() {
             {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
           </button>
 
+          {/* Settings */}
           <button
             onClick={() => setIsSettingsOpen(!isSettingsOpen)}
             className="p-3 bg-slate-900/70 backdrop-blur-md hover:bg-slate-800/80 rounded-2xl border border-white/10 text-slate-300 hover:text-white transition-all shadow-lg flex items-center gap-2"
           >
             <Settings2 className="w-5 h-5 text-cyan-400" />
-            <span className="hidden md:inline font-semibold text-sm">
-              {language === "es" ? "Ajustes" : language === "bi" ? "Ajustes / Settings" : "Settings"}
-            </span>
           </button>
         </div>
       </header>
+
+      {/* Classroom iPad Campaign Modal (Stripe Only) */}
+      {isDonationModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+          <div className="relative w-full max-w-lg bg-slate-900/95 border border-white/15 rounded-3xl p-6 md:p-8 shadow-2xl text-slate-100">
+            <button
+              onClick={() => setIsDonationModalOpen(false)}
+              className="absolute top-5 right-5 p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white transition"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-3 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-400">
+                <Tablet className="w-7 h-7" />
+              </div>
+              <div>
+                <h3 className="text-xl md:text-2xl font-black text-white">
+                  Classroom iPad Fund 📚
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Fondo de Tecnología para el Aula (15 iPads Objetivo)
+                </p>
+              </div>
+            </div>
+
+            {/* Campaign Progress Bar */}
+            <div className="my-5 p-4 rounded-2xl bg-slate-800/60 border border-white/5 space-y-2">
+              <div className="flex justify-between text-xs font-semibold">
+                <span className="text-emerald-400 font-bold">{ipadsFunded} of {totalIpadsNeeded} iPads Funded</span>
+                <span className="text-slate-400">{Math.round((ipadsFunded / totalIpadsNeeded) * 100)}% Complete</span>
+              </div>
+              <div className="w-full h-3 bg-slate-700/60 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400 rounded-full transition-all duration-500"
+                  style={{ width: `${(ipadsFunded / totalIpadsNeeded) * 100}%` }}
+                />
+              </div>
+              <p className="text-[11px] text-slate-400 text-right">
+                {totalIpadsNeeded - ipadsFunded} iPads remaining to complete our classroom set!
+              </p>
+            </div>
+
+            <div className="space-y-3 text-sm text-slate-300 mb-6">
+              <p>
+                <strong>Welcome teachers and community!</strong> We are crowdfunding to replace <strong>15 aging classroom iPads</strong> so students have equitable access to reading, math, and bilingual STEM learning stations.
+              </p>
+              <p className="text-xs text-slate-400 italic">
+                Estamos recaudando fondos para reemplazar 15 iPads en el salón de clases para enriquecer el aprendizaje bilingüe interactivo. ¡Cualquier aportación ayuda a los estudiantes!
+              </p>
+            </div>
+
+            {/* Stripe Direct Checkout & Share Actions */}
+            <div className="space-y-3">
+              <a
+                href={STRIPE_PAYMENT_LINK}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 text-white font-bold text-center flex items-center justify-center gap-3 shadow-xl shadow-emerald-500/25 hover:brightness-110 active:scale-95 transition text-base"
+              >
+                <CreditCard className="w-5 h-5" />
+                <span>Donate via Stripe (Card / Apple Pay)</span>
+                <ExternalLink className="w-4 h-4 ml-1" />
+              </a>
+
+              <div className="flex items-center justify-between pt-2 text-xs text-slate-400">
+                <span className="flex items-center gap-1.5 text-slate-400">
+                  <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                  Secured & encrypted by Stripe
+                </span>
+                <button
+                  onClick={handleShareApp}
+                  className="text-cyan-400 hover:text-cyan-300 flex items-center gap-1 font-semibold"
+                >
+                  <Share2 className="w-3.5 h-3.5" />
+                  <span>{copiedLink ? "Link Copied!" : "Share Project"}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Slide-out Settings */}
       {isSettingsOpen && (
@@ -699,7 +772,6 @@ export default function Home() {
           </div>
 
           <div className="space-y-6">
-            {/* Language Selection: English, Spanish, Bilingual */}
             <div>
               <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-2 mb-2">
                 <Globe className="w-4 h-4 text-cyan-400" />
@@ -726,7 +798,6 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Ball Bounce Sound Theme Selection */}
             <div>
               <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-2 mb-2">
                 <Music className="w-4 h-4 text-cyan-400" />
@@ -759,7 +830,6 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Bounce Sound Volume */}
             <div>
               <div className="flex justify-between items-center mb-1">
                 <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
@@ -777,7 +847,6 @@ export default function Home() {
               />
             </div>
 
-            {/* Mascot & Ball Themes */}
             <div>
               <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-2 mb-2">
                 <Sparkles className="w-4 h-4 text-cyan-400" />
@@ -807,7 +876,6 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Sensitivity Slider */}
             <div>
               <div className="flex justify-between items-center mb-1">
                 <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
@@ -825,7 +893,6 @@ export default function Home() {
               />
             </div>
 
-            {/* Noise Limit Threshold Slider */}
             <div>
               <div className="flex justify-between items-center mb-1">
                 <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
@@ -843,7 +910,6 @@ export default function Home() {
               />
             </div>
 
-            {/* Ball Count Slider */}
             <div>
               <div className="flex justify-between items-center mb-1">
                 <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
@@ -875,34 +941,33 @@ export default function Home() {
         </aside>
       )}
 
-      {/* Mic Enable Overlay */}
+      {/* Initial Landing / Mic Gate */}
       {!isMicOn && (
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-          <div className="bg-slate-900/85 backdrop-blur-md p-6 md:p-8 rounded-3xl border border-white/10 max-w-sm text-center shadow-2xl pointer-events-auto">
-            <h2 className="text-xl md:text-2xl font-bold text-white mb-2">
-              {language === "es" 
-                ? "Control de Ruido Escolar" 
-                : language === "bi" 
-                ? "Control de Ruido / Noise Monitor" 
-                : "Classroom Noise Monitor"}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10 p-4">
+          <div className="bg-slate-900/90 backdrop-blur-md p-6 md:p-8 rounded-3xl border border-white/10 max-w-md text-center shadow-2xl pointer-events-auto">
+            <h2 className="text-2xl md:text-3xl font-black text-white mb-2">
+              Classroom Noise Monitor 🐾
             </h2>
-            <p className="text-sm text-slate-300 mb-6">
-              {language === "es" 
-                ? "Haz clic para activar el micrófono. ¡Las pelotas y tu mascota rebotan y avisan cuando haya mucho ruido!"
-                : language === "bi"
-                ? "Activa el micrófono. ¡Las pelotas rebotan y alertan en español e inglés cuando hay ruido!\nEnable the mic to monitor sound."
-                : "Click below to turn on the microphone. The balls and mascot bounce when students make sound!"}
+            <p className="text-sm text-slate-300 mb-4">
+              Free interactive noise meter for teachers worldwide. Balls and your mascot bounce to classroom sounds!
+            </p>
+            <p className="text-xs text-slate-400 mb-6 italic">
+              Herramienta interactiva gratuita de control de sonido para maestros. ¡Haz clic para activar el micrófono!
             </p>
             <button
               onClick={toggleMic}
-              className="w-full py-3.5 px-6 rounded-2xl bg-cyan-500 hover:bg-cyan-400 text-white font-bold text-base shadow-xl shadow-cyan-500/25 transition-all flex items-center justify-center gap-2"
+              className="w-full py-3.5 px-6 rounded-2xl bg-cyan-500 hover:bg-cyan-400 text-white font-bold text-base shadow-xl shadow-cyan-500/25 transition-all flex items-center justify-center gap-2 mb-3"
             >
               <Mic className="w-5 h-5" />
-              {language === "es" 
-                ? "Iniciar Micrófono" 
-                : language === "bi" 
-                ? "Iniciar Micrófono / Start Mic" 
-                : "Enable Microphone"}
+              <span>Enable Microphone / Iniciar</span>
+            </button>
+
+            <button
+              onClick={() => setIsDonationModalOpen(true)}
+              className="w-full py-2.5 px-4 rounded-xl bg-slate-800/80 hover:bg-slate-800 text-emerald-300 text-xs font-semibold flex items-center justify-center gap-2 border border-emerald-500/20"
+            >
+              <Heart className="w-3.5 h-3.5 text-emerald-400 fill-emerald-400" />
+              <span>Support our 15 Classroom iPads Project</span>
             </button>
           </div>
         </div>
